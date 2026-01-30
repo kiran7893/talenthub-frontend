@@ -1,4 +1,4 @@
-/** Figma: "Or use your Email address" – DM Sans 400 20px line-height 26px #000 */
+/** Figma: "Or continue with" – DM Sans 400 20px line-height 26px #000 */
 export function AuthDivider() {
   return (
     <div className="relative flex w-full max-w-[461px] items-center gap-4">
@@ -11,7 +11,7 @@ export function AuthDivider() {
           lineHeight: "26px",
         }}
       >
-        Or use your Email address
+        Or continue with
       </span>
       <span className="h-px flex-1 bg-black/20" />
     </div>
