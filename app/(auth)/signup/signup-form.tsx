@@ -13,13 +13,30 @@ import { AuthDivider } from "@/components/auth/auth-divider";
 import {
   signupFormSchema,
   type SignupFormValues,
+  fullNameToFirstLast,
 } from "@/lib/validations/auth";
+import {
+  AUTH_ACCESS_TOKEN_KEY,
+  AUTH_USER_KEY,
+} from "@/lib/auth";
 
 const inputClass =
   "h-[71px] w-full max-w-[461px] rounded-[20px] border bg-white px-[25px] py-[25px] text-[20px] leading-[21px] placeholder:text-black/[0.48] [font-family:var(--font-inter),sans-serif] border-black/[0.34]";
 
 const buttonClass =
   "h-[60px] w-full max-w-[461px] rounded-[10px] text-[24px] font-semibold leading-[21px] text-[#FAFBFF] [font-family:var(--font-dm-sans),sans-serif] bg-[#FF5134] hover:opacity-95 disabled:opacity-50";
+
+type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+};
 
 export function SignupForm() {
   const router = useRouter();
@@ -36,11 +53,52 @@ export function SignupForm() {
     },
   });
 
-  function onSubmit(_values: SignupFormValues) {
+  async function onSubmit(values: SignupFormValues) {
     setError(null);
     setLoading(true);
     try {
+      const { firstName, lastName } = fullNameToFirstLast(values.fullName);
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+      const res = await fetch(`${baseUrl}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+          firstName,
+          lastName,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          setError("User with this email already exists.");
+        } else {
+          setError(
+            typeof data.message === "string"
+              ? data.message
+              : Array.isArray(data.message)
+                ? data.message.join(" ")
+                : "Something went wrong. Please try again."
+          );
+        }
+        return;
+      }
+
+      // Backend wraps response in { data: { accessToken, refreshToken, user } }
+      const payload = (data as { data?: AuthResponse }).data ?? (data as AuthResponse);
+      const { accessToken, user } = payload;
+      if (accessToken) {
+        localStorage.setItem(AUTH_ACCESS_TOKEN_KEY, accessToken);
+        if (user) {
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        }
+      }
       router.push("/onboarding");
+    } catch {
+      setError("Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
